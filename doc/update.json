@@ -1,0 +1,26 @@
+{
+    "app": "MyApp",
+    "version": "1.0.2",
+    "fragments": [
+        {
+            "part": 1,
+            "hash": ""
+        },
+        {
+            "part": 2,
+            "hash": ""
+        },
+        {
+            "part": 3,
+            "hash": ""
+        },
+        {
+            "part": 4,
+            "hash": ""
+        },
+        {
+            "part": 5,
+            "hash": ""
+        }
+    ]
+}
