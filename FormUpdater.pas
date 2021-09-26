@@ -27,7 +27,7 @@ const
 
 implementation
 
-uses IdHTTP, JSON;
+uses IdHTTP, JSON, IdHashMessageDigest, idHash;
 
 {$R *.dfm}
 
@@ -49,14 +49,48 @@ var
   fragmentsCount: integer;
   i: Integer;
 procedure downloadFragment(fragment: TJSONObject);
+var
+  filename: String;
+function MD5(const fileName: String) : String;
+var
+  idmd5: TIdHashMessageDigest5;
+  fs: TFileStream;
+  hash: T4x4LongWordRecord;
 begin
-  if FileExists(tempPath + '\' + fragment.GetValue('name').Value + '.frag') then
+  idmd5 := TIdHashMessageDigest5.Create;
+  fs := TFileStream.Create(fileName, fmOpenRead OR fmShareDenyWrite);
+  try
+    result := idmd5.HashStreamAsHex(fs);
+  finally
+    fs.Free;
+    idmd5.Free;
+  end;
+end;
+procedure download(fileName: String);
+var
+  _IdHTTP: TIdHTTP;
+  _MS: TMemoryStream;
+begin
+  _IdHTTP := TIdHTTP.Create(Self);
+  _MS := TMemoryStream.Create;
+  try
+    _IdHTTP.Get('http://updater.to/HASH-HASH-HASH-HASH-HASH/' + fileName, _MS);
+    _MS.SaveToFile(tempPath + '\' + fileName);
+  finally
+    _IdHTTP.Free;
+    _MS.Free;
+  end;
+end;
+begin
+  filename := fragment.GetValue('part').Value + '.frag';
+  if FileExists(tempPath + '\' + filename) then
   begin
-    // Check file
+    // Vérification du hash
+//    if not (MD5(tempPath + '\' + filename) = fragment.GetValue('hash').Value) then download(filename)
   end
   else
   begin
-    // Download file
+    download(filename);
   end;
 end;
 begin
@@ -71,6 +105,7 @@ begin
     begin
       tempPath := GetEnvironmentVariable('APPDATA') + '\' + JSONObj.GetValue('app').Value;
       fragmentsCount := (JSONObj.GetValue('fragments') as TJSONArray).Count;
+      forcedirectories(tempPath);
       for i := 0 to (JSONObj.GetValue('fragments') as TJSONArray).Count - 1 do
       begin
         downloadFragment((JSONObj.GetValue('fragments') as TJSONArray).items[i] as TJSONObject);
