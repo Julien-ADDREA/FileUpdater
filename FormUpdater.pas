@@ -46,10 +46,11 @@ var
   MS: TMemoryStream;
   JSONObj: TJSONObject;
   tempPath: String;
+  fragmentsCount: integer;
   i: Integer;
 procedure downloadFragment(fragment: TJSONObject);
 begin
-  if FileExists(tempPath + '\' + fragment.GetValue('name') + '.frag') then
+  if FileExists(tempPath + '\' + fragment.GetValue('name').Value + '.frag') then
   begin
     // Check file
   end
@@ -66,9 +67,10 @@ begin
   try
     IdHTTP.Get('http://updater.to/HASH-HASH-HASH-HASH-HASH/update.json', MS);
     JSONObj := TJSONObject.ParseJSONValue(MemoryStreamToString(MS)) as TJSONObject;
-    if not isUpToDate(version, (JSONObj.GetValue('version') as TJSONValue).Value) then
+    if not isUpToDate(version, JSONObj.GetValue('version').Value) then
     begin
-      tempPath := GetEnvironmentVariable('APPDATA') + '\' + (JSONObj.GetValue('app') as TJSONValue).Value;
+      tempPath := GetEnvironmentVariable('APPDATA') + '\' + JSONObj.GetValue('app').Value;
+      fragmentsCount := (JSONObj.GetValue('fragments') as TJSONArray).Count;
       for i := 0 to (JSONObj.GetValue('fragments') as TJSONArray).Count - 1 do
       begin
         downloadFragment((JSONObj.GetValue('fragments') as TJSONArray).items[i] as TJSONObject);
