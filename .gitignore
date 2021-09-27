@@ -3,3 +3,4 @@ __recovery
 Win32
 *.dproj.local
 *.stat
+*.identcache
