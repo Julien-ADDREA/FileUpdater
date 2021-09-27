@@ -2,8 +2,8 @@
     "app": {
         "name": "AppName",
         "version": "1.0.2",
-        "size": "79592152",
-        "block": "5242880"
+        "fileSize": "79592152",
+        "blockSize": "5242880"
     },
     "fragments": [{
         "part": "1",

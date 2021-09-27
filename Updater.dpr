@@ -2,7 +2,8 @@ program Updater;
 
 uses
   Vcl.Forms,
-  FormUpdater in 'FormUpdater.pas' {Form1};
+  FormUpdater in 'FormUpdater.pas' {Form1},
+  uUpdater in 'uUpdater.pas';
 
 {$R *.res}
 

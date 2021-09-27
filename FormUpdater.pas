@@ -4,7 +4,7 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.ExtCtrls, IdComponent, JSON;
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.ExtCtrls, IdComponent, JSON, uUpdater;
 
 type
   TForm1 = class(TForm)
@@ -31,6 +31,7 @@ type
 var
   Form1: TForm1;
   RoutineThread: TRoutineThread;
+  Updater: TUpdater;
 
 const
   version = '1.0.1'; // Devra être récupéré via un fichier repère
@@ -85,8 +86,6 @@ begin
   if localVersion = remoteVersion then Result := true;
 end;
 var
-  IdHTTP: TIdHTTP;
-  MS: TMemoryStream;
   JSONObj: TJSONObject;
   JSONApp: TJSONObject;
   tempPath: String;
@@ -161,11 +160,8 @@ begin
   Form1.LabelAction.Caption := 'Recherche de mise à jour ...';
   Synchronize(procedure begin Form1.ProgressBarGlobal.Style := pbstMarquee; end);
   Synchronize(procedure begin Form1.ProgressBarAction.Style := pbstMarquee; end);
-  IdHTTP := TIdHTTP.Create(nil);
-  MS := TMemoryStream.Create;
   try
-    IdHTTP.Get('http://updater.to/HASH-HASH-HASH-HASH-HASH/update.json', MS);
-    JSONObj := TJSONObject.ParseJSONValue(MemoryStreamToString(MS)) as TJSONObject;
+//    JSONObj := TJSONObject.ParseJSONValue(Updater.getJSON) as TJSONObject;
     JSONApp := JSONObj.GetValue('app') as TJSONObject;
     AppJSON := JSONApp;
     if not isUpToDate(version, JSONApp.GetValue('version').Value) then
@@ -198,8 +194,6 @@ begin
     Form1.ProgressBarGlobal.Position := Form1.ProgressBarGlobal.Max;
     Form1.ProgressBarAction.Position := Form1.ProgressBarAction.Max;
   finally
-    IdHTTP.Free;
-    ms.Free;
     OutStream.Free;
     self.Terminate;
   end;
@@ -210,9 +204,12 @@ end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
-  RoutineThread := TRoutineThread.Create(True);
-  RoutineThread.Priority := tpHighest;
-  RoutineThread.Start;
+//  RoutineThread := TRoutineThread.Create(True);
+//  RoutineThread.Priority := tpHighest;
+//  RoutineThread.Start;
+//  _JSON := TJSON.Create;
+  Updater := TUpdater.Create;
+  Form1.Caption:= Updater.Update.App.Name;
 end;
 
 end.
