@@ -41,7 +41,9 @@ uses IdHTTP, IdHashMessageDigest, idHash, System.Math;
 
 {$R *.dfm}
 
+{$region 'Routine Thread'}
 
+{$region 'Routine Thread : OnWorkBegin'}
 procedure TRoutineThread.OnWorkBegin(ASender: TObject; AWorkMode: TWorkMode; AWorkCountMax: Int64);
 begin
   if AWorkMode = wmRead then
@@ -50,6 +52,9 @@ begin
     Form1.ProgressBarAction.Position := 0;
   end;
 end;
+{$endregion}
+
+{$region 'Routine Thread : OnWork'}
 procedure TRoutineThread.OnWork(ASender: TObject; AWorkMode: TWorkMode; AWorkCount: Int64);
 begin
   if AWorkMode = wmRead then
@@ -58,11 +63,15 @@ begin
     Form1.ProgressBarAction.Position := AWorkCount ;
   end;
 end;
+{$endregion}
+
+{$region 'Routine Thread : OnWorkEnd'}
 procedure TRoutineThread.OnWorkEnd(ASender: TObject; AWorkMode: TWorkMode);
 begin
   if not (iii + 1 = Ceil(StrToInt(AppJSON.GetValue('size').Value) / StrToInt(AppJSON.GetValue('block').Value))) then
     Form1.ProgressBarAction.Position := 0;
 end;
+{$endregion}
 
 {$region 'Routine Thread : Execute'}
 procedure TRoutineThread.Execute;
@@ -195,6 +204,8 @@ begin
     self.Terminate;
   end;
 end;
+{$endregion}
+
 {$endregion}
 
 procedure TForm1.FormCreate(Sender: TObject);
