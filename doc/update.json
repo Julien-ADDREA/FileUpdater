@@ -1,26 +1,57 @@
 {
-    "app": "MyApp",
-    "version": "1.0.2",
-    "fragments": [
-        {
-            "part": 1,
-            "hash": ""
-        },
-        {
-            "part": 2,
-            "hash": ""
-        },
-        {
-            "part": 3,
-            "hash": ""
-        },
-        {
-            "part": 4,
-            "hash": ""
-        },
-        {
-            "part": 5,
-            "hash": ""
-        }
-    ]
+    "app": {
+        "name": "AppName",
+        "version": "1.0.2",
+        "size": "79592152",
+        "block": "5242880"
+    },
+    "fragments": [{
+        "part": "1",
+        "hash": "117DC0A08A4B0B8E9C4115337E641B85"
+    }, {
+        "part": "2",
+        "hash": "A174C398A3CBB54F4138AD7626B48CE7"
+    }, {
+        "part": "3",
+        "hash": "F31901D55812E49D81B727E0EA721C35"
+    }, {
+        "part": "4",
+        "hash": "7E4E1F97223B23AF345E62C4CCFB7223"
+    }, {
+        "part": "5",
+        "hash": "E56D33FBBFA9D0FD5B0272397D22250B"
+    }, {
+        "part": "6",
+        "hash": "5663478F522B1CCF3F1E15D57354C649"
+    }, {
+        "part": "7",
+        "hash": "980C8C9268D41E7F93ECB2E47827B1F5"
+    }, {
+        "part": "8",
+        "hash": "DF998AEF06C80F3B1B7E1D77CDEE2D53"
+    }, {
+        "part": "9",
+        "hash": "447A5185331C8CFA6448E0F5D91A363C"
+    }, {
+        "part": "10",
+        "hash": "C223C4F4146C3F7C1C2583C79F035B8A"
+    }, {
+        "part": "11",
+        "hash": "98E3B60666146FFC94A9C2F5534BD0C9"
+    }, {
+        "part": "12",
+        "hash": "2AFE6FD02453FCE88C5BFB882ACE9BA4"
+    }, {
+        "part": "13",
+        "hash": "F8AA7077EF67A7483EE245D732EE4680"
+    }, {
+        "part": "14",
+        "hash": "08B55696F9E5A14F343E0228F36158A6"
+    }, {
+        "part": "15",
+        "hash": "7711FB58C97BA712D7ACE4989F1E6F97"
+    }, {
+        "part": "16",
+        "hash": "15A2FD1375B3FEC8F6C76BFCBAC5D29C"
+    }]
 }

@@ -1,37 +1,71 @@
-unit FormUpdater;
+﻿unit FormUpdater;
 
 interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.ExtCtrls;
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.ExtCtrls, IdComponent, JSON;
 
 type
   TForm1 = class(TForm)
     LabelAction: TLabel;
     ProgressBarAction: TProgressBar;
     LabelDetails: TLabel;
+    ProgressBarGlobal: TProgressBar;
     procedure FormCreate(Sender: TObject);
-    procedure searchUpdate();
   private
-    { D�clarations priv�es }
+    { Déclarations privées }
   public
-    { D�clarations publiques }
+    { Déclarations publiques }
+  end;
+  TRoutineThread = class(TThread)
+    AppJSON: TJSONObject;
+    iii: integer;
+  protected
+    procedure OnWorkBegin(ASender: TObject; AWorkMode: TWorkMode; AWorkCountMax: Int64);
+    procedure OnWork(ASender: TObject; AWorkMode: TWorkMode; AWorkCount: Int64);
+    procedure OnWorkEnd(ASender: TObject; AWorkMode: TWorkMode);
+    procedure Execute; override;
   end;
 
 var
   Form1: TForm1;
+  RoutineThread: TRoutineThread;
 
 const
-  version = '1.0.1'; // Devra �tre r�cup�r� via un fichier rep�re
+  version = '1.0.1'; // Devra être récupéré via un fichier repère
 
 implementation
 
-uses IdHTTP, JSON, IdHashMessageDigest, idHash;
+uses IdHTTP, IdHashMessageDigest, idHash, System.Math;
 
 {$R *.dfm}
 
-procedure TForm1.searchUpdate();
+
+procedure TRoutineThread.OnWorkBegin(ASender: TObject; AWorkMode: TWorkMode; AWorkCountMax: Int64);
+begin
+  if AWorkMode = wmRead then
+  begin
+    Form1.ProgressBarAction.Max := AWorkCountMax;
+    Form1.ProgressBarAction.Position := 0;
+  end;
+end;
+procedure TRoutineThread.OnWork(ASender: TObject; AWorkMode: TWorkMode; AWorkCount: Int64);
+begin
+  if AWorkMode = wmRead then
+  begin
+    Form1.ProgressBarGlobal.Position := (StrToInt(AppJSON.GetValue('block').Value) * iii) + AWorkCount;
+    Form1.ProgressBarAction.Position := AWorkCount ;
+  end;
+end;
+procedure TRoutineThread.OnWorkEnd(ASender: TObject; AWorkMode: TWorkMode);
+begin
+  if not (iii + 1 = Ceil(StrToInt(AppJSON.GetValue('size').Value) / StrToInt(AppJSON.GetValue('block').Value))) then
+    Form1.ProgressBarAction.Position := 0;
+end;
+
+{$region 'Routine Thread : Execute'}
+procedure TRoutineThread.Execute;
 function MemoryStreamToString(M: TMemoryStream): string;
 begin
   SetString(Result, PAnsiChar(M.Memory), M.Size);
@@ -45,17 +79,18 @@ var
   IdHTTP: TIdHTTP;
   MS: TMemoryStream;
   JSONObj: TJSONObject;
+  JSONApp: TJSONObject;
   tempPath: String;
+
   fragmentsCount: integer;
   i: Integer;
 procedure downloadFragment(fragment: TJSONObject);
 var
   filename: String;
-function MD5(const fileName: String) : String;
+function MD5(const fileName: String): String;
 var
   idmd5: TIdHashMessageDigest5;
   fs: TFileStream;
-  hash: T4x4LongWordRecord;
 begin
   idmd5 := TIdHashMessageDigest5.Create;
   fs := TFileStream.Create(fileName, fmOpenRead OR fmShareDenyWrite);
@@ -71,9 +106,17 @@ var
   _IdHTTP: TIdHTTP;
   _MS: TMemoryStream;
 begin
-  _IdHTTP := TIdHTTP.Create(Self);
+  _IdHTTP := TIdHTTP.Create(nil);
   _MS := TMemoryStream.Create;
   try
+    _IdHTTP.OnWorkBegin := OnWorkBegin;
+    _IdHTTP.OnWork := OnWork;
+    _IdHTTP.OnWorkEnd := OnWorkEnd;
+    Synchronize(procedure begin Form1.ProgressBarGlobal.Style := pbstNormal; end);
+    Synchronize(procedure begin Form1.ProgressBarAction.Style := pbstNormal; end);
+    Form1.ProgressBarGlobal.Position := StrToInt(JSONApp.GetValue('block').Value) * i;
+    Form1.LabelAction.Caption := 'Téléchargement des fragments ...';
+    Form1.LabelDetails.Caption := fragment.GetValue('part').Value + '/' + IntToStr(fragmentsCount);
     _IdHTTP.Get('http://updater.to/HASH-HASH-HASH-HASH-HASH/' + fileName, _MS);
     _MS.SaveToFile(tempPath + '\' + fileName);
   finally
@@ -85,48 +128,71 @@ begin
   filename := fragment.GetValue('part').Value + '.frag';
   if FileExists(tempPath + '\' + filename) then
   begin
-    // V�rification du hash
-//    if not (MD5(tempPath + '\' + filename) = fragment.GetValue('hash').Value) then download(filename)
+    // Vérification du hash
+    if not (Form1.LabelAction.Caption = 'Reprise du téléchargement ...') then
+      Form1.LabelAction.Caption := 'Reprise du téléchargement ...';
+    if not (MD5(tempPath + '\' + filename) = fragment.GetValue('hash').Value) then
+    begin
+      // Téléchargement
+      download(filename);
+    end
+    else
+    begin
+      Form1.ProgressBarGlobal.Position := StrToInt(JSONApp.GetValue('block').Value) * i + 1;
+    end;
   end
   else
   begin
+    // Téléchargement
     download(filename);
   end;
 end;
 begin
-  LabelAction.Caption := 'Recherche de mises � jours ...';
-  ProgressBarAction.Style := pbstMarquee;
-  IdHTTP := TIdHTTP.Create(Self);
+  Form1.LabelAction.Caption := 'Recherche de mises à jours ...';
+  Synchronize(procedure begin Form1.ProgressBarGlobal.Style := pbstMarquee; end);
+  Synchronize(procedure begin Form1.ProgressBarAction.Style := pbstMarquee; end);
+  IdHTTP := TIdHTTP.Create(nil);
   MS := TMemoryStream.Create;
   try
     IdHTTP.Get('http://updater.to/HASH-HASH-HASH-HASH-HASH/update.json', MS);
     JSONObj := TJSONObject.ParseJSONValue(MemoryStreamToString(MS)) as TJSONObject;
-    if not isUpToDate(version, JSONObj.GetValue('version').Value) then
+    JSONApp := JSONObj.GetValue('app') as TJSONObject;
+    AppJSON := JSONApp;
+    if not isUpToDate(version, JSONApp.GetValue('version').Value) then
     begin
-      tempPath := GetEnvironmentVariable('APPDATA') + '\' + JSONObj.GetValue('app').Value;
+      tempPath := GetEnvironmentVariable('APPDATA') + '\' + JSONApp.GetValue('name').Value;
       fragmentsCount := (JSONObj.GetValue('fragments') as TJSONArray).Count;
       forcedirectories(tempPath);
+      Form1.ProgressBarGlobal.Max := StrToInt(JSONApp.GetValue('size').Value);
       for i := 0 to (JSONObj.GetValue('fragments') as TJSONArray).Count - 1 do
       begin
+        iii := i;
         downloadFragment((JSONObj.GetValue('fragments') as TJSONArray).items[i] as TJSONObject);
       end;
     end
     else
     begin
-      LabelAction.Caption := 'Votre client est � jour !';
+      //
     end;
-    // (JSONObj.GetValue('fragments') as TJSONArray).Count.ToString
-    // ShowMessage((JSONObj.GetValue('fragments') as TJSONArray).Count.ToString);
-    // ShowMessage((JSONObj.GetValue('file') as TJSONValue).Value);
+    Form1.LabelAction.Caption := 'Terminé !';
+    Form1.LabelDetails.Caption := 'Votre client est à jour !';
+    Synchronize(procedure begin Form1.ProgressBarGlobal.Style := pbstNormal; end);
+    Synchronize(procedure begin Form1.ProgressBarAction.Style := pbstNormal; end);
+    Form1.ProgressBarGlobal.Position := Form1.ProgressBarGlobal.Max;
+    Form1.ProgressBarAction.Position := Form1.ProgressBarAction.Max;
   finally
     IdHTTP.Free;
     ms.Free;
+    self.Terminate;
   end;
 end;
+{$endregion}
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
-  searchUpdate();
+  RoutineThread := TRoutineThread.Create(True);
+  RoutineThread.Priority := tpHighest;
+  RoutineThread.Start;
 end;
 
 end.

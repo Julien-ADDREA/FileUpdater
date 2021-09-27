@@ -26,15 +26,22 @@ object Form1: TForm1
   end
   object LabelDetails: TLabel
     Left = 25
-    Top = 60
+    Top = 76
     Width = 3
     Height = 13
   end
   object ProgressBarAction: TProgressBar
     Left = 25
-    Top = 44
+    Top = 60
     Width = 250
     Height = 10
     TabOrder = 0
+  end
+  object ProgressBarGlobal: TProgressBar
+    Left = 25
+    Top = 44
+    Width = 250
+    Height = 10
+    TabOrder = 1
   end
 end

@@ -2,3 +2,4 @@ __history
 __recovery
 Win32
 *.dproj.local
+*.stat
