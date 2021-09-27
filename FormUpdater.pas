@@ -81,6 +81,7 @@ var
   JSONObj: TJSONObject;
   JSONApp: TJSONObject;
   tempPath: String;
+  InStream, OutStream: TFileStream;
 
   fragmentsCount: integer;
   i: Integer;
@@ -148,7 +149,7 @@ begin
   end;
 end;
 begin
-  Form1.LabelAction.Caption := 'Recherche de mises à jours ...';
+  Form1.LabelAction.Caption := 'Recherche de mise à jour ...';
   Synchronize(procedure begin Form1.ProgressBarGlobal.Style := pbstMarquee; end);
   Synchronize(procedure begin Form1.ProgressBarAction.Style := pbstMarquee; end);
   IdHTTP := TIdHTTP.Create(nil);
@@ -169,10 +170,17 @@ begin
         iii := i;
         downloadFragment((JSONObj.GetValue('fragments') as TJSONArray).items[i] as TJSONObject);
       end;
-    end
-    else
-    begin
-      //
+      Form1.LabelAction.Caption := 'Préparation de la mise à jour ...';
+      OutStream := TFileStream.Create(tempPath + '\' + 'update.frag', fmCreate);
+      for i := 0 to (JSONObj.GetValue('fragments') as TJSONArray).Count - 1 do
+      begin
+        InStream := TFileStream.Create(tempPath + '\' + ((JSONObj.GetValue('fragments') as TJSONArray).items[i] as TJSONObject).GetValue('part').Value + '.frag', fmOpenRead);
+        try
+          OutStream.CopyFrom(InStream, InStream.Size);
+        finally
+          InStream.Free;
+        end;
+      end;
     end;
     Form1.LabelAction.Caption := 'Terminé !';
     Form1.LabelDetails.Caption := 'Votre client est à jour !';
@@ -183,6 +191,7 @@ begin
   finally
     IdHTTP.Free;
     ms.Free;
+    OutStream.Free;
     self.Terminate;
   end;
 end;
