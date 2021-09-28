@@ -13,6 +13,7 @@ type
     LabelDetails: TLabel;
     ProgressBarGlobal: TProgressBar;
     procedure FormCreate(Sender: TObject);
+    procedure OnError(Error: string);
   private
     { Déclarations privées }
   public
@@ -26,6 +27,7 @@ type
     procedure OnWork(ASender: TObject; AWorkMode: TWorkMode; AWorkCount: Int64);
     procedure OnWorkEnd(ASender: TObject; AWorkMode: TWorkMode);
     procedure Execute; override;
+    procedure OnError(Error: string);
   end;
 
 var
@@ -200,16 +202,27 @@ begin
 end;
 {$endregion}
 
+{$region 'Routine Thread : OnError'}
+procedure TRoutineThread.OnError(Error: string);
+begin
+  Form1.LabelAction.Caption := 'Erreur : ' + Error;
+end;
 {$endregion}
 
+{$endregion}
+
+procedure TForm1.OnError(Error: string);
+begin
+  Form1.LabelAction.Caption := 'Erreur : ' + Error;
+end;
 procedure TForm1.FormCreate(Sender: TObject);
 begin
 //  RoutineThread := TRoutineThread.Create(True);
 //  RoutineThread.Priority := tpHighest;
 //  RoutineThread.Start;
-//  _JSON := TJSON.Create;
   Updater := TUpdater.Create;
-  Form1.Caption:= Updater.Update.App.Name;
+  Updater.OnError := Form1.OnError;
+  Updater.initialize;
 end;
 
 end.
