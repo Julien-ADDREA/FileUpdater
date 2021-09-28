@@ -27,20 +27,26 @@ type
   TErrorEvent = procedure(Error: string) of object;
 
   TUpdater = class
-    Update: TJSON;
+    constructor Create(Version: string);
     procedure Initialize;
+    function IsUpToDate(): Boolean;
   private
+    FVersion: string;
+    FUpdate: TJSON;
     FOnError: TErrorEvent;
+    FDownloadDir: string;
   public
     property OnError: TErrorEvent read FOnError write FOnError;
   end;
 
-//var
-//  _JSON: TJSON;
-
 implementation
 
 uses IdHTTP, System.Classes, System.SysUtils, JSON, System.Generics.Collections;
+
+constructor TUpdater.Create(Version: string);
+begin
+  FVersion := Version;
+end;
 
 procedure TUpdater.Initialize;
 var
@@ -55,7 +61,7 @@ var
 begin
   IdHTTP := TIdHTTP.Create(nil);
   MS := TMemoryStream.Create;
-  Update := TJSON.Create;
+  FUpdate := TJSON.Create;
   try
     try
       IdHTTP.Get('http://updater.to/HASH-HASH-HASH-HASH-HASH/update.json', MS);
@@ -63,21 +69,23 @@ begin
       JSONObject := TJSONObject.ParseJSONValue(JSONResponse) as TJSONObject;
       // App
       JSONApp := JSONObject.GetValue('app') as TJSONObject;
-      Update.App := TApp.Create;
-      Update.App.Name := JSONApp.GetValue('name').Value;
-      Update.App.Version := JSONApp.GetValue('version').Value;
-      Update.App.FileSize := StrToInt(JSONApp.GetValue('fileSize').Value);
-      Update.App.BlockSize := StrToInt(JSONApp.GetValue('blockSize').Value);
+      FUpdate.App := TApp.Create;
+      FUpdate.App.Name := JSONApp.GetValue('name').Value;
+      FUpdate.App.Version := JSONApp.GetValue('version').Value;
+      FUpdate.App.FileSize := StrToInt(JSONApp.GetValue('fileSize').Value);
+      FUpdate.App.BlockSize := StrToInt(JSONApp.GetValue('blockSize').Value);
       // Fragments
       JSONFragments := JSONObject.GetValue('fragments') as TJSONArray;
-      SetLength(Update.Fragments, JSONFragments.Count);
+      SetLength(FUpdate.Fragments, JSONFragments.Count);
       for i := 0 to JSONFragments.Count - 1 do
       begin
         JSONFragment := JSONFragments.items[i] as TJSONObject;
-        Update.Fragments[i] := TFragment.Create;
-        Update.Fragments[i].Part := JSONFragment.GetValue('part').Value;
-        Update.Fragments[i].Hash := JSONFragment.GetValue('hash').Value;
+        FUpdate.Fragments[i] := TFragment.Create;
+        FUpdate.Fragments[i].Part := JSONFragment.GetValue('part').Value;
+        FUpdate.Fragments[i].Hash := JSONFragment.GetValue('hash').Value;
       end;
+      FDownloadDir := GetEnvironmentVariable('APPDATA') + '\' + FUpdate.App.Name;
+      ForceDirectories(FDownloadDir);
     except on E: Exception do
       if Assigned(FOnError) then
        FOnError(E.Message);
@@ -87,5 +95,12 @@ begin
     MS.Free;
   end;
 end;
+
+function TUpdater.IsUpToDate(): Boolean;
+begin
+  Result := false;
+  if FVersion = FUpdate.App.Version then Result := true;
+end;
+
 
 end.

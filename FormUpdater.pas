@@ -160,8 +160,8 @@ begin
 end;
 begin
   Form1.LabelAction.Caption := 'Recherche de mise à jour ...';
-  Synchronize(procedure begin Form1.ProgressBarGlobal.Style := pbstMarquee; end);
-  Synchronize(procedure begin Form1.ProgressBarAction.Style := pbstMarquee; end);
+  Synchronize(procedure begin Form1.ProgressBarGlobal.Style := Form1.ProgressBarAction.Style := pbstMarquee; end);
+//  Synchronize(procedure begin Form1.ProgressBarAction.Style := pbstMarquee; end);
   try
 //    JSONObj := TJSONObject.ParseJSONValue(Updater.getJSON) as TJSONObject;
     JSONApp := JSONObj.GetValue('app') as TJSONObject;
@@ -205,7 +205,8 @@ end;
 {$region 'Routine Thread : OnError'}
 procedure TRoutineThread.OnError(Error: string);
 begin
-  Form1.LabelAction.Caption := 'Erreur : ' + Error;
+//  Application.MessageBox(PChar(Error), 'Erreur', MB_OK + MB_ICONERROR);
+//  Form1.LabelAction.Caption := 'Erreur : ' + Error;
 end;
 {$endregion}
 
@@ -213,16 +214,21 @@ end;
 
 procedure TForm1.OnError(Error: string);
 begin
-  Form1.LabelAction.Caption := 'Erreur : ' + Error;
+  Application.MessageBox(PChar(Error), 'Erreur', MB_OK + MB_ICONERROR);
+//  Form1.LabelAction.Caption := 'Erreur : ' + Error;
 end;
 procedure TForm1.FormCreate(Sender: TObject);
 begin
 //  RoutineThread := TRoutineThread.Create(True);
 //  RoutineThread.Priority := tpHighest;
 //  RoutineThread.Start;
-  Updater := TUpdater.Create;
+  Updater := TUpdater.Create(version);
   Updater.OnError := Form1.OnError;
   Updater.initialize;
+  if not Updater.IsUpToDate() then
+  begin
+    //
+  end;
 end;
 
 end.
