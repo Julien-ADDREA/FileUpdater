@@ -218,6 +218,8 @@ begin
 //  Form1.LabelAction.Caption := 'Erreur : ' + Error;
 end;
 procedure TForm1.FormCreate(Sender: TObject);
+var
+  i: Integer;
 begin
 //  RoutineThread := TRoutineThread.Create(True);
 //  RoutineThread.Priority := tpHighest;
@@ -227,7 +229,13 @@ begin
   Updater.initialize;
   if not Updater.IsUpToDate() then
   begin
-    //
+    for i := 0 to Length(Updater.Update.Fragments) do
+    begin
+      if not Updater.IsValidFragment(Updater.Update.Fragments[i]) then
+      begin
+        //
+      end;
+    end;
   end;
 end;
 

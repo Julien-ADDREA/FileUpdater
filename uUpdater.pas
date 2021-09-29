@@ -30,18 +30,22 @@ type
     constructor Create(Version: string);
     procedure Initialize;
     function IsUpToDate(): Boolean;
+    function IsValidFragment(Fragment: TFragment): Boolean;
+    procedure DownloadUpdate();
   private
     FVersion: string;
     FUpdate: TJSON;
     FOnError: TErrorEvent;
     FDownloadDir: string;
   public
+    property Update: TJSON read FUpdate;
     property OnError: TErrorEvent read FOnError write FOnError;
   end;
 
 implementation
 
-uses IdHTTP, System.Classes, System.SysUtils, JSON, System.Generics.Collections;
+uses IdHTTP, System.Classes, System.SysUtils, JSON, System.Generics.Collections,
+  IdHashMessageDigest, idHash;
 
 constructor TUpdater.Create(Version: string);
 begin
@@ -102,5 +106,40 @@ begin
   if FVersion = FUpdate.App.Version then Result := true;
 end;
 
+function Tupdater.IsValidFragment(Fragment: TFragment): Boolean;
+var
+  FilePath: string;
+function MD5(const path: String): String;
+var
+  idmd5: TIdHashMessageDigest5;
+  fs: TFileStream;
+begin
+  idmd5 := TIdHashMessageDigest5.Create;
+  fs := TFileStream.Create(path, fmOpenRead OR fmShareDenyWrite);
+  try
+    result := idmd5.HashStreamAsHex(fs);
+  finally
+    idmd5.Free;
+    fs.Free;
+  end;
+end;
+begin
+  Result := False;
+  FilePath := FDownloadDir + '\' + Fragment.Part + '.frag';
+  if FileExists(FilePath) then
+  begin
+    if MD5(FilePath) = Fragment.Hash then Result := True;
+  end;
+end;
+
+procedure TUpdater.DownloadUpdate();
+var
+  i: Integer;
+begin
+  for i := 0 to Length(FUpdate.Fragments) - 1 do
+  begin
+//    downloadFragment((JSONObj.GetValue('fragments') as TJSONArray).items[i] as TJSONObject);
+  end;
+end;
 
 end.
