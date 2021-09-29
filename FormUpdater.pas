@@ -14,6 +14,8 @@ type
     ProgressBarGlobal: TProgressBar;
     procedure FormCreate(Sender: TObject);
     procedure OnError(Error: string);
+    procedure OnStart();
+    procedure OnEnd();
   private
     { Déclarations privées }
   public
@@ -26,7 +28,7 @@ type
     procedure OnWorkBegin(ASender: TObject; AWorkMode: TWorkMode; AWorkCountMax: Int64);
     procedure OnWork(ASender: TObject; AWorkMode: TWorkMode; AWorkCount: Int64);
     procedure OnWorkEnd(ASender: TObject; AWorkMode: TWorkMode);
-    procedure Execute; override;
+//    procedure Execute; override;
     procedure OnError(Error: string);
   end;
 
@@ -77,6 +79,7 @@ end;
 {$endregion}
 
 {$region 'Routine Thread : Execute'}
+{
 procedure TRoutineThread.Execute;
 function MemoryStreamToString(M: TMemoryStream): string;
 begin
@@ -200,14 +203,7 @@ begin
     self.Terminate;
   end;
 end;
-{$endregion}
-
-{$region 'Routine Thread : OnError'}
-procedure TRoutineThread.OnError(Error: string);
-begin
-//  Application.MessageBox(PChar(Error), 'Erreur', MB_OK + MB_ICONERROR);
-//  Form1.LabelAction.Caption := 'Erreur : ' + Error;
-end;
+}
 {$endregion}
 
 {$endregion}
@@ -215,8 +211,20 @@ end;
 procedure TForm1.OnError(Error: string);
 begin
   Application.MessageBox(PChar(Error), 'Erreur', MB_OK + MB_ICONERROR);
-//  Form1.LabelAction.Caption := 'Erreur : ' + Error;
 end;
+
+procedure TForm1.OnStart();
+begin
+  LabelAction.Caption := 'Recherche de mise à jour ...';
+  ProgressBarGlobal.Style := pbstMarquee;
+  ProgressBarAction.Style := pbstMarquee;
+end;
+
+procedure TForm1.OnEnd();
+begin
+  //
+end;
+
 procedure TForm1.FormCreate(Sender: TObject);
 var
   i: Integer;
@@ -226,14 +234,18 @@ begin
 //  RoutineThread.Start;
   Updater := TUpdater.Create(version);
   Updater.OnError := Form1.OnError;
-  Updater.initialize;
-  if not Updater.IsUpToDate() then
+  Updater.OnStart := Form1.OnStart;
+  Updater.OnEnd := Form1.OnEnd;
+  if (Updater.initialize) then
   begin
-    for i := 0 to Length(Updater.Update.Fragments) do
+    if not Updater.IsUpToDate() then
     begin
-      if not Updater.IsValidFragment(Updater.Update.Fragments[i]) then
+      for i := 0 to Length(Updater.Update.Fragments) do
       begin
-        Updater.DownloadFragment(Updater.Update.Fragments[i]);
+        if not Updater.IsValidFragment(Updater.Update.Fragments[i]) then
+        begin
+          Updater.DownloadFragment(Updater.Update.Fragments[i]);
+        end;
       end;
     end;
   end;

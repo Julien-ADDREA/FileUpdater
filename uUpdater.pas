@@ -24,11 +24,17 @@ type
   end;
 
   // TErrorEvent
-  TErrorEvent = procedure(Error: string) of object;
+  TErrorEvent = procedure (Error: string) of object;
+
+  // TStartEvent
+  TStartEvent = procedure () of object;
+
+  // TEndEvent
+  TEndEvent = procedure () of object;
 
   TUpdater = class
     constructor Create(Version: string);
-    procedure Initialize;
+    function Initialize(): Boolean;
     function IsUpToDate(): Boolean;
     function IsValidFragment(Fragment: TFragment): Boolean;
     procedure DownloadFragment(Fragment: TFragment);
@@ -36,10 +42,14 @@ type
     FVersion: string;
     FUpdate: TJSON;
     FOnError: TErrorEvent;
+    FOnStart: TStartEvent;
+    FOnEnd: TEndEvent;
     FDownloadDir: string;
   public
     property Update: TJSON read FUpdate;
     property OnError: TErrorEvent read FOnError write FOnError;
+    property OnStart: TStartEvent read FOnStart write FOnStart;
+    property OnEnd: TEndEvent read FOnEnd write FOnEnd;
   end;
 
 implementation
@@ -52,7 +62,7 @@ begin
   FVersion := Version;
 end;
 
-procedure TUpdater.Initialize;
+function TUpdater.Initialize(): Boolean;
 var
   IDHTTP: TIdHTTP;
   MS: TMemoryStream;
@@ -63,11 +73,16 @@ var
   JSONFragment: TJSONObject;
   i: integer;
 begin
+  Result := False;
   IdHTTP := TIdHTTP.Create(nil);
   MS := TMemoryStream.Create;
   FUpdate := TJSON.Create;
   try
     try
+      // OnStart
+      if Assigned(FOnStart) then
+        FOnStart();
+      // HTTP
       IdHTTP.Get('http://updater.to/HASH-HASH-HASH-HASH-HASH/update.json', MS);
       SetString(JSONResponse, PAnsiChar(MS.Memory), MS.Size);
       JSONObject := TJSONObject.ParseJSONValue(JSONResponse) as TJSONObject;
@@ -90,9 +105,10 @@ begin
       end;
       FDownloadDir := GetEnvironmentVariable('APPDATA') + '\' + FUpdate.App.Name;
       ForceDirectories(FDownloadDir);
+      Result := True;
     except on E: Exception do
       if Assigned(FOnError) then
-       FOnError(E.Message);
+        FOnError(E.Message);
     end;
   finally
     IdHTTP.Free;
