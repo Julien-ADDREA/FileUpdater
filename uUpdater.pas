@@ -31,7 +31,7 @@ type
     procedure Initialize;
     function IsUpToDate(): Boolean;
     function IsValidFragment(Fragment: TFragment): Boolean;
-    procedure DownloadUpdate();
+    procedure DownloadFragment(Fragment: TFragment);
   private
     FVersion: string;
     FUpdate: TJSON;
@@ -132,13 +132,22 @@ begin
   end;
 end;
 
-procedure TUpdater.DownloadUpdate();
+procedure TUpdater.DownloadFragment(Fragment: TFragment);
 var
-  i: Integer;
+  IdHTTP: TIdHTTP;
+  MS: TMemoryStream;
 begin
-  for i := 0 to Length(FUpdate.Fragments) - 1 do
-  begin
-//    downloadFragment((JSONObj.GetValue('fragments') as TJSONArray).items[i] as TJSONObject);
+  IdHTTP := TIdHTTP.Create(nil);
+  MS := TMemoryStream.Create;
+  try
+//    IdHTTP.OnWorkBegin := OnWorkBegin;
+//    IdHTTP.OnWork := OnWork;
+//    IdHTTP.OnWorkEnd := OnWorkEnd;
+    IdHTTP.Get('http://updater.to/HASH-HASH-HASH-HASH-HASH/' + Fragment.Part + '.frag', MS);
+    MS.SaveToFile(FDownloadDir + '\' + Fragment.Part + '.frag');
+  finally
+    IdHTTP.Free;
+    MS.Free;
   end;
 end;
 

@@ -233,7 +233,7 @@ begin
     begin
       if not Updater.IsValidFragment(Updater.Update.Fragments[i]) then
       begin
-        //
+        Updater.DownloadFragment(Updater.Update.Fragments[i]);
       end;
     end;
   end;
