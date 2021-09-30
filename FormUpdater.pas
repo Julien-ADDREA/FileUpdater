@@ -20,12 +20,16 @@ type
   end;
   TRoutineThread = class(TThread)
   protected
-    procedure OnStart();
+    procedure OnStart;
+    procedure OnUpdate;
+    procedure OnDiscover(Fragment: TFragment);
+    procedure OnDownload(Count: Integer; Total: Integer);
+    procedure OnMerge;
     procedure OnWorkBegin(ASender: TObject; AWorkMode: TWorkMode; AWorkCountMax: Int64);
     procedure OnWork(ASender: TObject; AWorkMode: TWorkMode; AWorkCount: Int64);
     procedure OnWorkEnd(ASender: TObject; AWorkMode: TWorkMode);
     procedure OnError(Error: string);
-    procedure OnEnd();
+    procedure OnEnd;
     procedure Execute; override;
 //    procedure OnError(Error: string);
   end;
@@ -47,11 +51,67 @@ uses IdHTTP, IdHashMessageDigest, idHash, System.Math;
 {$region 'Routine Thread'}
 
 {$region 'Routine Thread : OnStart'}
-procedure TRoutineThread.OnStart();
+procedure TRoutineThread.OnStart;
 begin
   Form1.LabelAction.Caption := 'Recherche de mise à jour ...';
-  Synchronize(procedure begin Form1.ProgressBarGlobal.Style := pbstMarquee; end);
-  Synchronize(procedure begin Form1.ProgressBarAction.Style := pbstMarquee; end);
+  Synchronize(
+    procedure
+    begin
+      Form1.ProgressBarGlobal.Style := pbstMarquee;
+      Form1.ProgressBarAction.Style := pbstMarquee;
+    end
+  );
+end;
+{$endregion}
+
+{$region 'Routine Thread : OnUpdate'}
+procedure TRoutineThread.OnUpdate;
+begin
+  Form1.ProgressBarGlobal.Max := Updater.Update.App.FileSize;
+  Synchronize(
+    procedure
+    begin
+      Form1.ProgressBarGlobal.Style := pbstNormal;
+    end
+  );
+end;
+{$endregion}
+
+{$region 'Routine Thread : OnDiscover'}
+procedure TRoutineThread.OnDiscover(Fragment: TFragment);
+begin
+  Form1.LabelAction.Caption := 'Récupération des fragments ...';
+  Form1.LabelDetails.Caption := Fragment.Part + '/' + IntToStr(Length(Updater.Update.Fragments));
+end;
+{$endregion}
+
+{$region 'Routine Thread : OnDownload'}
+procedure TRoutineThread.OnDownload(Count: Integer; Total: Integer);
+begin
+  Form1.LabelAction.Caption := 'Téléchargement des fragments ...';
+  Form1.LabelDetails.Caption := IntToStr(Count) + '/' + IntToStr(Total);
+  Synchronize(
+    procedure
+    begin
+      Form1.ProgressBarGlobal.Style := pbstNormal;
+      Form1.ProgressBarAction.Style := pbstNormal;
+    end
+  );
+end;
+{$endregion}
+
+{$region 'Routine Thread : OnMerge'}
+procedure TRoutineThread.OnMerge;
+begin
+  Form1.LabelAction.Caption := 'Fuzion des fragments ...';
+//  Form1.LabelDetails.Caption := IntToStr(Count) + '/' + IntToStr(Total);
+//  Synchronize(
+//    procedure
+//    begin
+//      Form1.ProgressBarGlobal.Style := pbstNormal;
+//      Form1.ProgressBarAction.Style := pbstNormal;
+//    end
+//  );
 end;
 {$endregion}
 
@@ -60,6 +120,8 @@ procedure TRoutineThread.OnWorkBegin(ASender: TObject; AWorkMode: TWorkMode; AWo
 begin
   if AWorkMode = wmRead then
   begin
+    Form1.ProgressBarGlobal.Position := Updater.Update.App.BlockSize * (Updater.DownloadedFragments + Updater.VerifiedFragments);
+    Form1.LabelDetails.Caption := IntToStr(Updater.DownloadedFragments + 1) + '/' + IntToStr(Length(Updater.Update.Fragments) - Updater.VerifiedFragments);
     Form1.ProgressBarAction.Max := AWorkCountMax;
     Form1.ProgressBarAction.Position := 0;
   end;
@@ -71,8 +133,8 @@ procedure TRoutineThread.OnWork(ASender: TObject; AWorkMode: TWorkMode; AWorkCou
 begin
   if AWorkMode = wmRead then
   begin
-    Form1.ProgressBarGlobal.Position := Updater.Update.App.BlockSize * (StrToInt(Updater.CurrentFragment.Part) - 1) + AWorkCount;
-    Form1.ProgressBarAction.Position := AWorkCount ;
+    Form1.ProgressBarGlobal.Position := (Updater.DownloadedFragments + Updater.VerifiedFragments) * Updater.Update.App.BlockSize + AWorkCount;
+    Form1.ProgressBarAction.Position := AWorkCount;
   end;
 end;
 {$endregion}
@@ -80,19 +142,19 @@ end;
 {$region 'Routine Thread : OnWorkEnd'}
 procedure TRoutineThread.OnWorkEnd(ASender: TObject; AWorkMode: TWorkMode);
 begin
-  if not (StrToInt(Updater.CurrentFragment.Part) = Ceil(Updater.Update.App.FileSize / Updater.Update.App.BlockSize)) then
+  if not (Updater.DownloadedFragments + Updater.VerifiedFragments = Ceil(Updater.Update.App.FileSize / Updater.Update.App.BlockSize)) then
     Form1.ProgressBarAction.Position := 0;
 end;
 {$endregion}
 
-{$region 'Routine Thread : OnError}
+{$region 'Routine Thread : OnError'}
 procedure TRoutineThread.OnError(Error: string);
 begin
   Application.MessageBox(PChar(Error), 'Erreur', MB_OK + MB_ICONERROR);
 end;
 {$endregion}
 
-{$region 'Routine Thread : OnEnd}
+{$region 'Routine Thread : OnEnd'}
 procedure TRoutineThread.OnEnd();
 begin
   //
@@ -101,87 +163,6 @@ end;
 
 {$region 'Routine Thread : Execute'}
 {
-procedure TRoutineThread.Execute;
-function MemoryStreamToString(M: TMemoryStream): string;
-begin
-  SetString(Result, PAnsiChar(M.Memory), M.Size);
-end;
-function isUpToDate(localVersion: String; remoteVersion: String): Boolean;
-begin
-  Result := false;
-  if localVersion = remoteVersion then Result := true;
-end;
-var
-  JSONObj: TJSONObject;
-  JSONApp: TJSONObject;
-  tempPath: String;
-  InStream, OutStream: TFileStream;
-
-  fragmentsCount: integer;
-  i: Integer;
-procedure downloadFragment(fragment: TJSONObject);
-var
-  filename: String;
-function MD5(const fileName: String): String;
-var
-  idmd5: TIdHashMessageDigest5;
-  fs: TFileStream;
-begin
-  idmd5 := TIdHashMessageDigest5.Create;
-  fs := TFileStream.Create(fileName, fmOpenRead OR fmShareDenyWrite);
-  try
-    result := idmd5.HashStreamAsHex(fs);
-  finally
-    fs.Free;
-    idmd5.Free;
-  end;
-end;
-procedure download(fileName: String);
-var
-  _IdHTTP: TIdHTTP;
-  _MS: TMemoryStream;
-begin
-  _IdHTTP := TIdHTTP.Create(nil);
-  _MS := TMemoryStream.Create;
-  try
-    _IdHTTP.OnWorkBegin := OnWorkBegin;
-    _IdHTTP.OnWork := OnWork;
-    _IdHTTP.OnWorkEnd := OnWorkEnd;
-    Synchronize(procedure begin Form1.ProgressBarGlobal.Style := pbstNormal; end);
-    Synchronize(procedure begin Form1.ProgressBarAction.Style := pbstNormal; end);
-    Form1.ProgressBarGlobal.Position := StrToInt(JSONApp.GetValue('block').Value) * i;
-    Form1.LabelAction.Caption := 'Téléchargement des fragments ...';
-    Form1.LabelDetails.Caption := fragment.GetValue('part').Value + '/' + IntToStr(fragmentsCount);
-    _IdHTTP.Get('http://updater.to/HASH-HASH-HASH-HASH-HASH/' + fileName, _MS);
-    _MS.SaveToFile(tempPath + '\' + fileName);
-  finally
-    _IdHTTP.Free;
-    _MS.Free;
-  end;
-end;
-begin
-  filename := fragment.GetValue('part').Value + '.frag';
-  if FileExists(tempPath + '\' + filename) then
-  begin
-    // Vérification du hash
-    if not (Form1.LabelAction.Caption = 'Reprise du téléchargement ...') then
-      Form1.LabelAction.Caption := 'Reprise du téléchargement ...';
-    if not (MD5(tempPath + '\' + filename) = fragment.GetValue('hash').Value) then
-    begin
-      // Téléchargement
-      download(filename);
-    end
-    else
-    begin
-      Form1.ProgressBarGlobal.Position := StrToInt(JSONApp.GetValue('block').Value) * i + 1;
-    end;
-  end
-  else
-  begin
-    // Téléchargement
-    download(filename);
-  end;
-end;
 begin
   Form1.LabelAction.Caption := 'Recherche de mise à jour ...';
   Synchronize(procedure begin Form1.ProgressBarGlobal.Style := Form1.ProgressBarAction.Style := pbstMarquee; end);
@@ -226,29 +207,19 @@ begin
 end;
 }
 procedure TRoutineThread.Execute;
-var
-  i: Integer;
 begin
   Updater := TUpdater.Create(version);
-  Updater.OnError := OnError;
   Updater.OnStart := OnStart;
+  Updater.OnUpdate := OnUpdate;
+  Updater.OnDiscover := OnDiscover;
+  Updater.OnDownload := OnDownload;
+  Updater.OnMerge := OnMerge;
   Updater.OnWorkBegin := OnWorkBegin;
   Updater.OnWork := OnWork;
   Updater.OnWorkEnd := OnWorkEnd;
+  Updater.OnError := OnError;
   Updater.OnEnd := OnEnd;
-  if (Updater.initialize) then
-  begin
-    if not Updater.IsUpToDate() then
-    begin
-      for i := 0 to Length(Updater.Update.Fragments) do
-      begin
-        if not Updater.IsValidFragment(Updater.Update.Fragments[i]) then
-        begin
-          Updater.DownloadFragment(Updater.Update.Fragments[i]);
-        end;
-      end;
-    end;
-  end;
+  Updater.CheckUpdate();
 end;
 {$endregion}
 
