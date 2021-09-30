@@ -4,7 +4,7 @@ object Form1: TForm1
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = 'Updater'
-  ClientHeight = 150
+  ClientHeight = 100
   ClientWidth = 300
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -19,27 +19,27 @@ object Form1: TForm1
   TextHeight = 13
   object LabelAction: TLabel
     Left = 25
-    Top = 25
+    Top = 18
     Width = 16
     Height = 13
     Caption = 'n/a'
   end
   object LabelDetails: TLabel
     Left = 25
-    Top = 76
+    Top = 69
     Width = 3
     Height = 13
   end
   object ProgressBarAction: TProgressBar
     Left = 25
-    Top = 60
+    Top = 53
     Width = 250
     Height = 10
     TabOrder = 0
   end
   object ProgressBarGlobal: TProgressBar
     Left = 25
-    Top = 44
+    Top = 37
     Width = 250
     Height = 10
     TabOrder = 1
