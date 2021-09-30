@@ -13,23 +13,21 @@ type
     LabelDetails: TLabel;
     ProgressBarGlobal: TProgressBar;
     procedure FormCreate(Sender: TObject);
-    procedure OnError(Error: string);
-    procedure OnStart();
-    procedure OnEnd();
   private
     { Déclarations privées }
   public
     { Déclarations publiques }
   end;
   TRoutineThread = class(TThread)
-    AppJSON: TJSONObject;
-    iii: integer;
   protected
+    procedure OnStart();
     procedure OnWorkBegin(ASender: TObject; AWorkMode: TWorkMode; AWorkCountMax: Int64);
     procedure OnWork(ASender: TObject; AWorkMode: TWorkMode; AWorkCount: Int64);
     procedure OnWorkEnd(ASender: TObject; AWorkMode: TWorkMode);
-//    procedure Execute; override;
     procedure OnError(Error: string);
+    procedure OnEnd();
+    procedure Execute; override;
+//    procedure OnError(Error: string);
   end;
 
 var
@@ -48,6 +46,15 @@ uses IdHTTP, IdHashMessageDigest, idHash, System.Math;
 
 {$region 'Routine Thread'}
 
+{$region 'Routine Thread : OnStart'}
+procedure TRoutineThread.OnStart();
+begin
+  Form1.LabelAction.Caption := 'Recherche de mise à jour ...';
+  Synchronize(procedure begin Form1.ProgressBarGlobal.Style := pbstMarquee; end);
+  Synchronize(procedure begin Form1.ProgressBarAction.Style := pbstMarquee; end);
+end;
+{$endregion}
+
 {$region 'Routine Thread : OnWorkBegin'}
 procedure TRoutineThread.OnWorkBegin(ASender: TObject; AWorkMode: TWorkMode; AWorkCountMax: Int64);
 begin
@@ -64,7 +71,7 @@ procedure TRoutineThread.OnWork(ASender: TObject; AWorkMode: TWorkMode; AWorkCou
 begin
   if AWorkMode = wmRead then
   begin
-    Form1.ProgressBarGlobal.Position := (StrToInt(AppJSON.GetValue('block').Value) * iii) + AWorkCount;
+    Form1.ProgressBarGlobal.Position := Updater.Update.App.BlockSize * (StrToInt(Updater.CurrentFragment.Part) - 1) + AWorkCount;
     Form1.ProgressBarAction.Position := AWorkCount ;
   end;
 end;
@@ -73,8 +80,22 @@ end;
 {$region 'Routine Thread : OnWorkEnd'}
 procedure TRoutineThread.OnWorkEnd(ASender: TObject; AWorkMode: TWorkMode);
 begin
-  if not (iii + 1 = Ceil(StrToInt(AppJSON.GetValue('size').Value) / StrToInt(AppJSON.GetValue('block').Value))) then
+  if not (StrToInt(Updater.CurrentFragment.Part) = Ceil(Updater.Update.App.FileSize / Updater.Update.App.BlockSize)) then
     Form1.ProgressBarAction.Position := 0;
+end;
+{$endregion}
+
+{$region 'Routine Thread : OnError}
+procedure TRoutineThread.OnError(Error: string);
+begin
+  Application.MessageBox(PChar(Error), 'Erreur', MB_OK + MB_ICONERROR);
+end;
+{$endregion}
+
+{$region 'Routine Thread : OnEnd}
+procedure TRoutineThread.OnEnd();
+begin
+  //
 end;
 {$endregion}
 
@@ -204,38 +225,17 @@ begin
   end;
 end;
 }
-{$endregion}
-
-{$endregion}
-
-procedure TForm1.OnError(Error: string);
-begin
-  Application.MessageBox(PChar(Error), 'Erreur', MB_OK + MB_ICONERROR);
-end;
-
-procedure TForm1.OnStart();
-begin
-  LabelAction.Caption := 'Recherche de mise à jour ...';
-  ProgressBarGlobal.Style := pbstMarquee;
-  ProgressBarAction.Style := pbstMarquee;
-end;
-
-procedure TForm1.OnEnd();
-begin
-  //
-end;
-
-procedure TForm1.FormCreate(Sender: TObject);
+procedure TRoutineThread.Execute;
 var
   i: Integer;
 begin
-//  RoutineThread := TRoutineThread.Create(True);
-//  RoutineThread.Priority := tpHighest;
-//  RoutineThread.Start;
   Updater := TUpdater.Create(version);
-  Updater.OnError := Form1.OnError;
-  Updater.OnStart := Form1.OnStart;
-  Updater.OnEnd := Form1.OnEnd;
+  Updater.OnError := OnError;
+  Updater.OnStart := OnStart;
+  Updater.OnWorkBegin := OnWorkBegin;
+  Updater.OnWork := OnWork;
+  Updater.OnWorkEnd := OnWorkEnd;
+  Updater.OnEnd := OnEnd;
   if (Updater.initialize) then
   begin
     if not Updater.IsUpToDate() then
@@ -249,6 +249,16 @@ begin
       end;
     end;
   end;
+end;
+{$endregion}
+
+{$endregion}
+
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+  RoutineThread := TRoutineThread.Create(True);
+  RoutineThread.Priority := tpHighest;
+  RoutineThread.Start;
 end;
 
 end.

@@ -2,6 +2,8 @@ unit uUpdater;
 
 interface
 
+uses IdComponent;
+
 type
   // TApp
   TApp = class
@@ -23,13 +25,14 @@ type
     Fragments: array of TFragment;
   end;
 
-  // TErrorEvent
+//  TWorkMode = (wmRead, wmWrite);
+
+  // Events
   TErrorEvent = procedure (Error: string) of object;
-
-  // TStartEvent
   TStartEvent = procedure () of object;
-
-  // TEndEvent
+  TWorkBeginEvent = procedure (ASender: TObject; AWorkMode: TWorkMode; AWorkCountMax: Int64) of object;
+  TWorkEvent = procedure (ASender: TObject; AWorkMode: TWorkMode; AWorkCount: Int64) of object;
+  TWorkEndEvent = procedure (ASender: TObject; AWorkMode: TWorkMode) of object;
   TEndEvent = procedure () of object;
 
   TUpdater = class
@@ -41,14 +44,23 @@ type
   private
     FVersion: string;
     FUpdate: TJSON;
+    FCurrentFragment: TFragment;
     FOnError: TErrorEvent;
     FOnStart: TStartEvent;
+    FOnWorkBegin: TWorkBeginEvent;
+    FOnWork: TWorkEvent;
+    FOnWorkEnd: TworkEndEvent;
     FOnEnd: TEndEvent;
     FDownloadDir: string;
   public
     property Update: TJSON read FUpdate;
-    property OnError: TErrorEvent read FOnError write FOnError;
+    property CurrentFragment: TFragment read FCurrentFragment;
+    // Events
     property OnStart: TStartEvent read FOnStart write FOnStart;
+    property OnWorkBegin: TWorkBeginEvent read FOnWorkBegin write FOnWorkBegin;
+    property OnWork: TWorkEvent read FOnWork write FOnWork;
+    property OnWorkEnd: TWorkEndEvent read FOnWorkEnd write FOnWorkEnd;
+    property OnError: TErrorEvent read FOnError write FOnError;
     property OnEnd: TEndEvent read FOnEnd write FOnEnd;
   end;
 
@@ -156,9 +168,9 @@ begin
   IdHTTP := TIdHTTP.Create(nil);
   MS := TMemoryStream.Create;
   try
-//    IdHTTP.OnWorkBegin := OnWorkBegin;
-//    IdHTTP.OnWork := OnWork;
-//    IdHTTP.OnWorkEnd := OnWorkEnd;
+    if Assigned(FOnWorkBegin) then IdHTTP.OnWorkBegin := FOnWorkBegin;
+    if Assigned(FOnWork) then IdHTTP.OnWork := FOnWork;
+    if Assigned(FOnWorkEnd) then IdHTTP.OnWorkEnd := FOnWorkEnd;
     IdHTTP.Get('http://updater.to/HASH-HASH-HASH-HASH-HASH/' + Fragment.Part + '.frag', MS);
     MS.SaveToFile(FDownloadDir + '\' + Fragment.Part + '.frag');
   finally
