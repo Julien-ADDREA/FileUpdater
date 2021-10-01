@@ -162,50 +162,6 @@ end;
 {$endregion}
 
 {$region 'Routine Thread : Execute'}
-{
-begin
-  Form1.LabelAction.Caption := 'Recherche de mise à jour ...';
-  Synchronize(procedure begin Form1.ProgressBarGlobal.Style := Form1.ProgressBarAction.Style := pbstMarquee; end);
-//  Synchronize(procedure begin Form1.ProgressBarAction.Style := pbstMarquee; end);
-  try
-//    JSONObj := TJSONObject.ParseJSONValue(Updater.getJSON) as TJSONObject;
-    JSONApp := JSONObj.GetValue('app') as TJSONObject;
-    AppJSON := JSONApp;
-    if not isUpToDate(version, JSONApp.GetValue('version').Value) then
-    begin
-      tempPath := GetEnvironmentVariable('APPDATA') + '\' + JSONApp.GetValue('name').Value;
-      fragmentsCount := (JSONObj.GetValue('fragments') as TJSONArray).Count;
-      forcedirectories(tempPath);
-      Form1.ProgressBarGlobal.Max := StrToInt(JSONApp.GetValue('size').Value);
-      for i := 0 to (JSONObj.GetValue('fragments') as TJSONArray).Count - 1 do
-      begin
-        iii := i;
-        downloadFragment((JSONObj.GetValue('fragments') as TJSONArray).items[i] as TJSONObject);
-      end;
-      Form1.LabelAction.Caption := 'Préparation de la mise à jour ...';
-      OutStream := TFileStream.Create(tempPath + '\' + 'update.frag', fmCreate);
-      for i := 0 to (JSONObj.GetValue('fragments') as TJSONArray).Count - 1 do
-      begin
-        InStream := TFileStream.Create(tempPath + '\' + ((JSONObj.GetValue('fragments') as TJSONArray).items[i] as TJSONObject).GetValue('part').Value + '.frag', fmOpenRead);
-        try
-          OutStream.CopyFrom(InStream, InStream.Size);
-        finally
-          InStream.Free;
-        end;
-      end;
-    end;
-    Form1.LabelAction.Caption := 'Terminé !';
-    Form1.LabelDetails.Caption := 'Votre client est à jour !';
-    Synchronize(procedure begin Form1.ProgressBarGlobal.Style := pbstNormal; end);
-    Synchronize(procedure begin Form1.ProgressBarAction.Style := pbstNormal; end);
-    Form1.ProgressBarGlobal.Position := Form1.ProgressBarGlobal.Max;
-    Form1.ProgressBarAction.Position := Form1.ProgressBarAction.Max;
-  finally
-    OutStream.Free;
-    self.Terminate;
-  end;
-end;
-}
 procedure TRoutineThread.Execute;
 begin
   Updater := TUpdater.Create(version);
